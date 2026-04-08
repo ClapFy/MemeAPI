@@ -1,0 +1,170 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ApiKey {
+  id            String    @id @default(uuid())
+  key           String    @unique
+  name          String    @default("Unnamed Key")
+  requestsUsed  Int       @default(0)
+  requestsLimit Int       @default(1000)
+  isActive      Boolean   @default(true)
+  isUnlimited   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastUsedAt    DateTime?
+  rateLimitTier String    @default("standard")
+  
+  requests      MemeRequest[]
+  seenMemes     ApiKeySeenMeme[]
+  telegramUser  TelegramUser?
+  webhooks      WebhookEndpoint[]
+  
+  @@index([key])
+  @@index([isActive])
+  @@map("api_keys")
+}
+
+model MemeRequest {
+  id          String   @id @default(uuid())
+  apiKeyId    String
+  apiKey      ApiKey   @relation(fields: [apiKeyId], references: [id])
+  
+  query       String?
+  subreddit   String?
+  count       Int
+  minUpvotes  Int?
+  maxUpvotes  Int?
+  sort        String   @default("hot")
+  nsfw        Boolean  @default(false)
+  
+  memesReturned Json
+  responseTime  Int
+  statusCode    Int
+  error         String?
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([apiKeyId])
+  @@index([createdAt])
+  @@map("meme_requests")
+}
+
+model ApiKeySeenMeme {
+  id          String   @id @default(uuid())
+  apiKeyId    String
+  apiKey      ApiKey   @relation(fields: [apiKeyId], references: [id])
+  
+  redditId    String
+  permalink   String
+  title       String
+  
+  firstSeenAt DateTime @default(now())
+  lastReturnedAt DateTime @default(now())
+  returnCount Int    @default(1)
+  
+  @@unique([apiKeyId, redditId])
+  @@index([apiKeyId])
+  @@index([lastReturnedAt])
+  @@map("api_key_seen_memes")
+}
+
+model TelegramUser {
+  id              String   @id @default(uuid())
+  telegramId      String   @unique
+  username        String?
+  firstName       String?
+  lastName        String?
+  
+  apiKeyId        String?  @unique
+  apiKey          ApiKey?  @relation(fields: [apiKeyId], references: [id])
+  
+  freeRequestsUsed Int     @default(0)
+  freeRequestsLimit Int    @default(100)
+  
+  starsBalance    Int      @default(0)
+  totalPurchased  Int      @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  payments        Payment[]
+  
+  @@index([telegramId])
+  @@map("telegram_users")
+}
+
+model Payment {
+  id              String   @id @default(uuid())
+  telegramId      String
+  telegramUser    TelegramUser @relation(fields: [telegramId], references: [telegramId])
+  
+  amount          Int
+  requestsAdded   Int
+  status          String
+  telegramPaymentId String?
+  
+  createdAt       DateTime @default(now())
+  completedAt     DateTime?
+  
+  @@index([telegramId])
+  @@index([status])
+  @@map("payments")
+}
+
+model WebhookEndpoint {
+  id          String   @id @default(uuid())
+  apiKeyId    String
+  apiKey      ApiKey   @relation(fields: [apiKeyId], references: [id])
+  
+  url         String
+  secret      String
+  events      String[]
+  isActive    Boolean  @default(true)
+  lastError   String?
+  lastTriggeredAt DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([apiKeyId])
+  @@map("webhook_endpoints")
+}
+
+model SystemLog {
+  id          String   @id @default(uuid())
+  level       String
+  message     String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  
+  @@index([level])
+  @@index([createdAt])
+  @@map("system_logs")
+}
+
+model MemeCache {
+  id          String   @id @default(uuid())
+  redditId    String   @unique
+  title       String
+  url         String
+  permalink   String
+  subreddit   String
+  author      String
+  upvotes     Int
+  upvoteRatio Float
+  comments    Int
+  isNsfw      Boolean
+  createdAt   DateTime @default(now())
+  fetchedAt   DateTime @default(now())
+  
+  @@index([subreddit])
+  @@index([upvotes])
+  @@index([fetchedAt])
+  @@map("meme_cache")
+}
