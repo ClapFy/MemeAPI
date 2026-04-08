@@ -24,6 +24,8 @@ interface TelegramUser {
   freeRequestsUsed: number
   freeRequestsLimit: number
   apiKeyId: string | null
+  totalPurchased: number
+  starsBalance: number
 }
 
 async function getOrCreateUser(msg: TelegramBot.Message): Promise<TelegramUser> {
@@ -68,7 +70,9 @@ async function getOrCreateUser(msg: TelegramBot.Message): Promise<TelegramUser> 
     lastName: user.lastName,
     freeRequestsUsed: user.freeRequestsUsed,
     freeRequestsLimit: user.freeRequestsLimit,
-    apiKeyId: user.apiKeyId
+    apiKeyId: user.apiKeyId,
+    totalPurchased: user.totalPurchased,
+    starsBalance: user.starsBalance
   }
 }
 
@@ -145,7 +149,7 @@ bot.onText(/\/balance/, async (msg) => {
   )
 })
 
-bot.onText(/\/getmeme(?:\s+(.+))?/, async (msg, match) => {
+async function sendRandomMeme(msg: TelegramBot.Message, query?: string) {
   const user = await getOrCreateUser(msg)
   
   if (!checkCooldown(user.telegramId)) {
@@ -162,8 +166,6 @@ bot.onText(/\/getmeme(?:\s+(.+))?/, async (msg, match) => {
     )
     return
   }
-  
-  const query = match?.[1]
   
   try {
     bot.sendChatAction(msg.chat.id, 'upload_photo')
@@ -202,8 +204,13 @@ bot.onText(/\/getmeme(?:\s+(.+))?/, async (msg, match) => {
     }
   } catch (error) {
     console.error('Error fetching meme:', error)
-    bot.sendMessage(msg.chat.id, 'Sorry, something went wrong. Please try again.')
+    bot.sendMessage(msg.chat.id, 'Sorry, could not fetch a meme. Please try again later.')
   }
+}
+
+bot.onText(/\/getmeme(?:\s+(.+))?/, async (msg, match) => {
+  const query = match?.[1]
+  await sendRandomMeme(msg, query || undefined)
 })
 
 bot.onText(/\/buy/, async (msg) => {
@@ -249,8 +256,6 @@ bot.onText(/\/status/, async (msg) => {
   }
 })
 
-bot.onText(/\/docs/, async (msg) => {
-
 bot.onText(/\/stats/, async (msg) => {
   const user = await getOrCreateUser(msg)
   
@@ -293,6 +298,9 @@ Stars Balance: ${user.starsBalance}
     bot.sendMessage(msg.chat.id, 'Sorry, could not fetch your statistics. Please try again later.')
   }
 })
+
+bot.onText(/\/docs/, async (msg) => {
+  const docsText = `
 MemeAPI Documentation
 
 Base URL: https://your-domain.com/api
@@ -347,7 +355,7 @@ bot.on('callback_query', async (query) => {
   
   if (data === 'get_another') {
     bot.answerCallbackQuery(query.id)
-    bot.emit('text', { ...msg, text: '/getmeme' } as TelegramBot.Message)
+    await sendRandomMeme(msg)
     return
   }
   
