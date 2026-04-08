@@ -69,7 +69,7 @@ export default function KeysPanel() {
       
       if (response.ok) {
         setShowCreateModal(false)
-        setNewKeyData({ name: '', requestsLimit: 1000, rateLimitTier: 'standard' })
+        setNewKeyData({ name: '', requestsLimit: 1000, rateLimitTier: 'standard', isUnlimited: false })
         fetchKeys()
       } else {
         setError('Failed to create key')
