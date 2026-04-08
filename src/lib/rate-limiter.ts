@@ -70,7 +70,7 @@ class RateLimiter {
     const now = Date.now()
     const oneMinuteAgo = now - 60 * 1000
 
-    for (const [key, timestamps] of this.requests.entries()) {
+    for (const [key, timestamps] of Array.from(this.requests.entries())) {
       const filtered = timestamps.filter(t => t > oneMinuteAgo)
       if (filtered.length === 0) {
         this.requests.delete(key)
